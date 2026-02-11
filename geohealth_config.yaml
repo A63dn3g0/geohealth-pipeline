@@ -1,0 +1,103 @@
+# GeoHealth configuration (pre-filled with ABS/AIHW/PHN placeholders)
+output_dir: ./outputs
+
+
+geography:
+  # Updated to use 2025 LGA GeoPackage
+  lga_shapefile: ./inputs/LGA_2025_AUST_GDA2020.gpkg
+  lga_name_field: LGA_NAME25
+  lga_code_field: LGA_CODE25
+
+  # Optional: include PHN shapefile to generate crosswalks
+  # DISABLED: PHN_Boundaries_2023.gpkg not provided. Uncomment to enable crosswalk generation.
+  phn_shapefile: null
+  phn_name_field: null
+  phn_code_field: null
+
+# DISABLED: All datasets disabled because input files not provided.
+# To enable datasets, uncomment them below and provide the corresponding CSV files.
+datasets: []
+  # --- Population (ABS ERP by LGA) -----------------------------------------
+  # - name: abs_erp_population_lga
+  #   path: ./inputs/ABS_ERP_LGA_2023.csv
+  #   lga_field: LGA_CODE
+  #   value_fields: [population]
+  #   join_on: code
+
+  # --- ABS Causes of Death: Intentional Self-Harm (counts by LGA, if available) ---
+  # - name: abs_cod_selfharm
+  #   path: ./inputs/ABS_CausesOfDeath_Suicide_LGA.csv
+  #   lga_field: LGA_CODE
+  #   value_fields: [selfharm_count]
+  #   join_on: code
+
+  # --- AIHW Alcohol & Other Drug Treatment Services (counts by client episodes, by LGA or mapped to LGA) ---
+  # - name: aihw_aod_treatment
+  #   path: ./inputs/AIHW_AOD_Treatment_by_LGA.csv
+  #   lga_field: LGA_CODE
+  #   value_fields: [aod_treatment_count]
+  #   join_on: code
+
+  # --- AIHW Hospitalisations (MH/AOD-related separations) ------------------
+  # - name: aihw_hospital_mh_aod
+  #   path: ./inputs/AIHW_Hospital_MH_AOD_LGA.csv
+  #   lga_field: LGA_CODE
+  #   value_fields: [mh_related_separations, aod_related_separations]
+  #   join_on: code
+
+  # --- ABS/Survey: National Study of Mental Health & Wellbeing (modelled to LGA) ---
+  # - name: nsmhwb_modelled
+  #   path: ./inputs/ABS_NSMHWB_Modelled_to_LGA.csv
+  #   lga_field: LGA_NAME
+  #   value_fields: [mh_any_12m_count, mh_severe_12m_count]
+  #   join_on: name
+
+  # --- Funding by PHN and program (to be reallocated to LGA using crosswalk) ---
+  # - name: funding_phn_programs
+  #   path: ./inputs/Funding_PHN_Programs.csv
+  #   lga_field: PHN_CODE     # NOTE: reference only; not used for LGA join
+  #   value_fields: [mh_funding_total, aod_funding_total, suicide_prev_funding_total]
+  #   join_on: code
+
+transforms:
+  # DISABLED: zscore fields commented out because source datasets not available
+  # Uncomment and provide required datasets to enable
+  # zscore_fields: [mh_any_12m_rate_per_1000, aod_treatment_rate_per_1000, selfharm_rate_per_100k]
+  zscore_fields: []
+
+population:
+  # DISABLED: Population config commented out because source dataset not available
+  # Uncomment and provide abs_erp_population_lga dataset to enable
+  # dataset_name: abs_erp_population_lga
+  # population_field: population
+  dataset_name: null
+  population_field: null
+
+# Derived per-capita rates. "per_k" controls the base (1000 or 100000).
+# DISABLED: All derived rates commented out because source datasets not available
+# Uncomment when you enable the required datasets
+derived_rates: []
+  # - {numerator: mh_any_12m_count,           as: mh_any_12m_rate_per_1000,   per_k: 1000}
+  # - {numerator: mh_severe_12m_count,        as: mh_severe_12m_rate_per_1000, per_k: 1000}
+  # - {numerator: aod_treatment_count,        as: aod_treatment_rate_per_1000, per_k: 1000}
+  # - {numerator: selfharm_count,             as: selfharm_rate_per_100k,     per_k: 100000}
+  # - {numerator: mh_related_separations,     as: mh_sep_rate_per_1000,       per_k: 1000}
+  # - {numerator: aod_related_separations,    as: aod_sep_rate_per_1000,      per_k: 1000}
+
+crosswalk:
+  # DISABLED: Crosswalk generation disabled because PHN boundaries not provided
+  lga_to_phn_csv: null
+  phn_to_lga_csv: null
+  # Uncomment and provide ./inputs/PHN_Boundaries_2023.gpkg to enable:
+  # lga_to_phn_csv: ./outputs/crosswalk_lga_to_phn.csv
+  # phn_to_lga_csv: ./outputs/crosswalk_phn_to_lga.csv
+
+output:
+  geopackage: ./outputs/geohealth.gpkg
+  layer_name: geohealth_lga
+  csv: ./outputs/geohealth_lga.csv
+  quickmap_png: ./outputs/geohealth_quickmap.png
+  # choropleth_field disabled because no metrics available in demo config
+  # When you enable datasets with derived rates, uncomment this to visualize:
+  # choropleth_field: mh_any_12m_rate_per_1000
+  choropleth_field: null

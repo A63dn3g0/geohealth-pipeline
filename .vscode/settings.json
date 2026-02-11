@@ -1,0 +1,14 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "GH project",
+            "database": "Geohealth",
+            "username": "postgres",
+            "connectionTimeout": 30
+        }
+    ]
+}
