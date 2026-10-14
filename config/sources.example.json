@@ -1,0 +1,24 @@
+{
+  "sources": [
+    {
+      "enabled": false,
+      "id": "mental_health_ed_monthly_count",
+      "indicator": "Mental-health-related ED presentations — monthly count",
+      "file": "data/raw/healthstats_mental_health_monthly.csv",
+      "agency": "NSW Ministry of Health / HealthStats NSW",
+      "source_url": "https://www.healthstats.nsw.gov.au/indicator?name=-men-sui-mth-ed&location=LHD",
+      "geography_type": "LHD",
+      "frequency": "monthly",
+      "unit": "presentations",
+      "value_kind": "count",
+      "columns": {
+        "geography": "SET_ACTUAL_GEOGRAPHY_COLUMN",
+        "period": "SET_ACTUAL_MONTH_COLUMN",
+        "value": "SET_ACTUAL_COUNT_COLUMN"
+      },
+      "filters": {},
+      "retrieved_at": "RECORD_DOWNLOAD_DATE",
+      "license_reviewed": false
+    }
+  ]
+}
