@@ -67,7 +67,7 @@ def parse_healthstats_lhd(path: Path, source: dict) -> pd.DataFrame:
     return result.sort_values(["geography_name","period"]).reset_index(drop=True)
 
 def footer_metadata(path: Path) -> dict:
-    lines=Path(path).read_text(encoding="utf-8-sig").splitlines()
+    lines=[line.strip().strip('"') for line in Path(path).read_text(encoding="utf-8-sig").splitlines()]
     return {
         "source_release":next((s for s in lines if s.startswith("Date data updated:")),None),
         "citation":next((s for s in lines if "https://www.healthstats.nsw.gov.au/r/" in s),None),
