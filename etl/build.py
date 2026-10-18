@@ -9,6 +9,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
+from etl.healthstats import parse_healthstats_lhd, footer_metadata
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = ("id", "file", "agency", "source_url", "geography_type", "frequency", "indicator", "unit", "value_kind", "columns")
@@ -35,7 +36,8 @@ def period_start(values: pd.Series, frequency: str) -> pd.Series:
     return pd.Series(dates, index=values.index).dt.strftime("%Y-%m-%d")
 
 def normalize_csv(source: dict, root: Path = ROOT) -> pd.DataFrame:
-    missing = [k for k in REQUIRED if k not in source]
+    required = tuple(k for k in REQUIRED if k != "columns") if source.get("adapter")=="healthstats_lhd_quarterly" else REQUIRED
+    missing = [k for k in required if k not in source]
     if missing:
         raise ValueError(f"Source manifest missing fields: {missing}")
     if source["frequency"] not in FREQ or source["value_kind"] not in KINDS or source["geography_type"] not in GEO:
@@ -45,6 +47,8 @@ def normalize_csv(source: dict, root: Path = ROOT) -> pd.DataFrame:
         raise ValueError("Source file path escapes project root")
     if not path.is_file():
         raise FileNotFoundError(f"Download {source['source_url']} and save at {path}")
+    if source.get("adapter") == "healthstats_lhd_quarterly":
+        return parse_healthstats_lhd(path, source)
     mapping = source["columns"]
     if not {"period", "geography", "value"} <= set(mapping):
         raise ValueError("columns must map period, geography and value")
@@ -99,9 +103,11 @@ def build(root: Path = ROOT, manifest: str = "config/sources.json") -> pd.DataFr
     provenance = []
     for s in enabled:
         file = root / s["file"]
+        metadata = footer_metadata(file) if s.get("adapter")=="healthstats_lhd_quarterly" else {}
         provenance.append({k: s[k] for k in ["id", "agency", "source_url", "indicator", "unit", "frequency", "value_kind"]} | {
             "source_file": s["file"], "sha256": hashlib.sha256(file.read_bytes()).hexdigest(),
-            "retrieved_at": s.get("retrieved_at", "not recorded"), "license_reviewed": s.get("license_reviewed", False)})
+            "retrieved_at": s.get("retrieved_at", "not recorded"), "license_reviewed": s.get("license_reviewed", False),
+            "observations": len(all_data[all_data.source_id == s["id"]])} | metadata)
     (processed / "provenance.json").write_text(json.dumps({
         "build_utc": datetime.now(timezone.utc).isoformat(), "sources": provenance}, indent=2), encoding="utf-8")
     return all_data
@@ -113,9 +119,11 @@ def inspect(path: Path) -> None:
         for sheet in workbook.sheet_names[:10]:
             print(sheet, pd.read_excel(path, sheet_name=sheet, nrows=3).to_string(index=False))
     else:
-        df = pd.read_csv(path, nrows=5)
-        print("Columns:", list(df.columns))
-        print(df.to_string(index=False))
+        import csv
+        with path.open("r", encoding="utf-8-sig", newline="") as handle:
+            for i, row in enumerate(csv.reader(handle)):
+                print(row)
+                if i >= 5: break
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="GeoHealth official-source ingestion")
