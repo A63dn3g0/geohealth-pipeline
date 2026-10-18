@@ -1,38 +1,43 @@
-# GeoHealth NSW — MVP requirements (October 2026)
+# GeoHealth NSW — Revised MVP requirements, October 2026
 
-## Product
-GeoHealth is a pre-populated dashboard for public-health resource planning in NSW. It brings together authoritative government data on mental-health and alcohol-and-other-drug (AOD) utilisation, geographical variation, demographics and — where source data permits — funding and service resources.
+GeoHealth supports evidence-based NSW mental-health/AOD service planning, comparing service utilisation, geographic jurisdictions, and (when published) funding and resources.
 
-Primary audiences: Local Health Districts, Primary Health Networks, NSW agencies, NGOs, planners and service commissioners.
+## Confirmed first source and data contract
 
-## Core MVP acceptance conditions
+Source: [HealthStats NSW, mental-health-related ED presentations](https://www.healthstats.nsw.gov.au/r/135943), updated June 2026. Supplied original export 18 Oct 2026.
 
-| ID | Requirement | Acceptance |
+- 588 source observations, 42 quarterly periods (2015-Q4–2026-Q1), 13 separately reported LHDs and published All LHDs aggregate (not an additional polygon).
+- Age 12+, persons, total mental-health presentations.
+- Crude rates per 100,000 and lower/upper published 95% confidence bounds; **not counts**.
+- Far West and Western NSW suppressed. No imputation or reverse-engineering suppressed values.
+- LHD is the patient's residence; Murrumbidgee omits Albury Hospital presentations.
+- HIE/EDWARD reporting change starting FY2021–22 means forecast stationarity needs monitoring.
+
+## Accepted MVP requirements
+
+| ID | Requirement | Test |
 | --- | --- | --- |
-| FR-001 | Official data only | No demo outcomes, synthetic indicators or made-up funding on dashboard |
-| FR-002 | NSW LHD-first | Select a real LHD and display source-observed activity |
-| FR-003 | Source provenance | For every imported series, record URL, agency, checksum and import date |
-| FR-004 | Reproducibility | Original files unchanged; same config/raw files yield identical observations |
-| FR-005 | Validation | Refuse duplicate geography-period-indicator rows, negative counts, invalid dates |
-| FR-006 | Suppression safety | Suppressed cells omitted, never read as zero |
-| FR-007 | Dashboard | Overview, map, jurisdiction profile, trends, resources and CSV export |
-| FR-008 | No invented geography | LHD/PHN/LGA values displayed only at source-supported geography |
-| FR-009 | Forecasting | >=36 continuous monthly observed counts, validated against simple baseline |
-| FR-010 | Transparency | Backtest model score and non-calibrated uncertainty clearly labelled |
-| FR-011 | Graceful onboarding | App opens without DB/source data and explains ingestion |
-| FR-012 | No Postgres dependency | Clean local run needs only Python/requirements.txt |
+| FR-001 | Official data only | No synthetic dashboard records |
+| FR-002 | Source-specific ETL | Parse original source title, strata, footer, quarterly periods |
+| FR-003 | Geographic integrity | Preserve suppressed areas; show All LHDs as separate benchmark |
+| FR-004 | Provenance | Raw SHA-256, retrieved date, release date, citation link |
+| FR-005 | Original observation intervals | Keep source LL/UL 95% CI; never call them forecast bounds |
+| FR-006 | Quarterly-rate forecasting | >=24 contiguous quarters, backtested against seasonal naive |
+| FR-007 | Transparent uncertainty | Label forecast-error bands as uncalibrated |
+| FR-008 | Jurisdiction comparison | Comparison plot of selected published LHDs |
+| FR-009 | Interactive map | Use only real official polygon geometry; no synthetic boundaries |
+| FR-010 | No database dependency | `streamlit run app.py` starts without PostgreSQL |
+| FR-011 | Reliable error state | Clearly require source CSV if missing |
+| FR-012 | No public data release by default | Raw/processed observations remain .gitignored |
 
-## Initial forecast
-Target: monthly mental-health-related ED presentation counts by LHD. Additional substance-related monthly ED indicators may be added after verifying actual source exports. Forecast horizons: 3, 6, 12 months. Models: seasonal naïve, seasonal trend. Select using rolling-origin MAE; display approximate empirical error bands. Withhold forecasts for insufficient, missing, suppressed, or non-count series.
+## Forecast semantics
 
-## Not in MVP
-Synthetic analytic data; national dashboards; Postgres/PostGIS; FastAPI; Kubernetes/nginx; advanced machine learning; user uploads; generic data scraping; inferred funding redistribution; building custom spatial crosswalks. Funding requires official geography-allocable sources before claims of gaps can be made.
+The observed quarterly *rate* is the target, not treatment counts or disease prevalence. Use four-quarter seasonal-naïve and seasonal-trend candidates with rolling-origin MAE; forecast 1/2/4/8 quarters, reject gaps, missing or invalid values. These are exploratory extrapolations with no causal interpretation or guaranteed prediction-interval coverage. Retain separate monthly count forecaster for future genuine monthly-count sources.
 
-## End-to-end demonstration
-Install dependencies → download HealthStats NSW LHD monthly count export → inspect real columns → configure source → run ETL → launch dashboard → compare jurisdictions → view trend/forecast with errors → verify source URL and raw checksum.
+## Deferred
 
-## Risks/next prerequisites
-1. Actual HealthStats CSV with original source metadata and correct count/age/sex selections.
-2. Confirm licensing and allowable reuse, especially for commercial redistribution.
-3. Validate that the hospital LHD classification used by each indicator matches mapping geography.
-4. Demonstrate model performance against holdout historical data; no accuracy guarantee is implied.
+AOD data adapters, postcode/LGA disaggregation, PHN concordances, funding attribution, source licence approval, user auth, Postgres/PostGIS, cloud deployment. Do not allocate larger-geography funding or infer suppressed outcomes for the first MVP.
+
+## Acceptance workflow
+
+Copy unchanged attached CSV to `data/raw/NSW_HealthStats_LHD.csv` → `python -m etl.build` → validate 588 observations and 14 labels, observed CI, no duplicate quarters → `streamlit run app.py` → select Sydney LHD and compare with All LHDs → view quarterly-rate forecast → optionally download real LHD polygons for map. Dataset itself is not committed publicly.
