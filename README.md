@@ -1,113 +1,67 @@
-# GeoHealth LGA Pipeline
+# GeoHealth NSW — real-data public-health dashboard MVP
 
-A modular, config-driven pipeline for integrating, transforming, and exporting Australian health and geography data at the LGA level. Supports both file-based and PostGIS workflows.
+**NSW-first, source-backed, no PostgreSQL, no synthetic analytical data.**
 
-## Features
-- **Config-driven:** All data sources, joins, and outputs are defined in a YAML config file.
-- **Flexible I/O:** Read/write from CSV, GeoPackage, and PostGIS (PostgreSQL/PostGIS integration).
-- **Demo mode:** Generate synthetic data for testing and development.
-- **Derived metrics:** Computes per-capita rates and z-scores.
-- **Crosswalks:** Area-weighted LGA↔PHN crosswalks.
-- **Quick mapping:** Exports a PNG choropleth for fast visual checks.
-- **Database schema inspection:** Print your PostgreSQL schema from the CLI.
+GeoHealth now supports the actual **HealthStats NSW mental-health-related ED presentations — LHD quarterly crude-rate export** provided on 18 October 2026. The source title contains “monthly”, but LHD observations are **quarterly rates per 100,000**, not monthly counts. The current export contains 13 individually reported LHDs plus a separately published “All LHDs” benchmark, covering 2015-Q4 through 2026-Q1.
 
-## Requirements
-- Python 3.8+
-- See `requirements.txt` or `requirements-min.txt` for dependencies.
+## Quick start (Python 3.11+)
 
-## Usage
-
-### Basic pipeline run (with config):
-```
-python geohealth_pipeline_Project.py --config geohealth_config.yaml
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
 ```
 
-### Demo mode (synthetic data):
-```
-python geohealth_pipeline_Project.py --demo
-```
+**Put the exact, unmodified HealthStats CSV you supplied** in:
 
-### Auto-detect config (no --config needed if file is in project root or configs/):
 ```
-python geohealth_pipeline_Project.py
+data/raw/NSW_HealthStats_LHD.csv
 ```
 
-### PostGIS integration
-- **Write output to PostGIS:**
-```
-python geohealth_pipeline_Project.py --config geohealth_config.yaml --write-postgis --pg-user myuser --pg-password mypass --pg-db mydb --pg-table geohealth_lga
-```
-- **Read input from PostGIS:**
-```
-python geohealth_pipeline_Project.py --read-postgis --pg-user myuser --pg-password mypass --pg-db mydb --pg-table geohealth_lga
+The file is already configured in `config/sources.json`. It is **not committed to this public repository**, pending review of the source reuse and commercial redistribution licence.
+
+```bash
+python -m etl.build --inspect data/raw/NSW_HealthStats_LHD.csv
+python -m etl.build
+streamlit run app.py
 ```
 
-### Print PostgreSQL schema
-```
-python geohealth_pipeline_Project.py --show-db-schema --pg-user myuser --pg-password mypass --pg-db mydb
-```
+The builder saves **observations.csv** and **provenance.json** to `data/processed/`. The provenance records the raw SHA-256, source update, agency, citation URL, and retrieval date. The original CSV stays unchanged.
 
-## CLI Options
-- `--config` Path to YAML config file
-- `--demo` Use synthetic demo data
-- `--read-postgis` Read LGA layer from PostGIS
-- `--write-postgis` Write LGA layer to PostGIS
-- `--show-db-schema` Print PostgreSQL schema and exit
-- `--pg-user`, `--pg-password`, `--pg-host`, `--pg-port`, `--pg-db`, `--pg-table` PostGIS connection options
+Optional official NSW Local Health District map:
 
-
-## YAML Config Structure
-
-The pipeline is controlled by a YAML config file. Below is a summary of the main sections and their purpose:
-
-### Top-level keys
-- `output_dir`: Directory for all outputs.
-- `geography`: Defines the LGA and (optionally) PHN shapefiles and their key fields.
-- `datasets`: List of input datasets to join, with join keys and value fields.
-- `transforms`: Optional transforms (e.g., z-score fields).
-- `population`: Which dataset/field provides population for rate calculations.
-- `derived_rates`: List of per-capita rates to compute.
-- `crosswalk`: Output paths for LGA↔PHN crosswalk CSVs.
-- `output`: Output file paths and options (GeoPackage, CSV, PNG, etc).
-
-### Example config
-```yaml
-output_dir: ./outputs
-geography:
-	lga_shapefile: ./inputs/ABS_LGA_2023.gpkg
-	lga_name_field: LGA_NAME_2023
-	lga_code_field: LGA_CODE_2023
-	phn_shapefile: ./inputs/PHN_Boundaries_2023.gpkg
-	phn_name_field: PHN_NAME
-	phn_code_field: PHN_CODE
-datasets:
-	- name: abs_erp_population_lga
-		path: ./inputs/ABS_ERP_LGA_2023.csv
-		lga_field: LGA_CODE
-		value_fields: [population]
-		join_on: code
-transforms:
-	zscore_fields: [mh_any_12m_rate_per_1000]
-population:
-	dataset_name: abs_erp_population_lga
-	population_field: population
-derived_rates:
-	- {numerator: mh_any_12m_count, as: mh_any_12m_rate_per_1000, per_k: 1000}
-crosswalk:
-	lga_to_phn_csv: ./outputs/crosswalk_lga_to_phn.csv
-	phn_to_lga_csv: ./outputs/crosswalk_phn_to_lga.csv
-output:
-	geopackage: ./outputs/geohealth.gpkg
-	layer_name: geohealth_lga
-	csv: ./outputs/geohealth_lga.csv
-	quickmap_png: ./outputs/geohealth_quickmap.png
-	choropleth_field: mh_any_12m_rate_per_1000
+```bash
+python -m etl.download --boundaries
 ```
 
-See `geohealth_config.yaml` for a full, annotated example.
-- Add unit tests for all key functions
-- Document your YAML config structure in this README
-- Consider Dockerizing for reproducible environments
+No database, GIS library, API server, Docker, or synthetic dataset is required to view actual LHD time series and forecasts. Mapping requires downloading the official government GeoJSON boundaries.
 
-## License
-MIT
+## What the dashboard shows
+
+- Quarterly crude-rate time series, by selected LHD, including **source-published 95% confidence intervals**
+- Comparisons between up to five LHDs and the independent **All LHDs** published benchmark
+- Available LHD choropleth polygons (excludes All LHDs aggregate and suppressed LHDs)
+- Forecasts 1, 2, 4, or 8 quarters ahead where there are at least **24 uninterrupted quarterly rate observations**
+- Seasonal-naïve vs seasonal-linear-trend models selected by rolling-origin MAE, with **uncalibrated empirical forecast-error bands**, not confused with observed-rate CIs
+- Source provenance and CSV export
+
+**Health interpretation:** ED presentation rates measure recorded service utilisation, not illness prevalence, treatment access, or distinct people. Crude rates are not age-standardised. Far West and Western NSW are suppressed; Murrumbidgee data omit Albury presentations; source systems changed from HIE to EDWARD commencing FY2021–22. Never fabricate missing LHD values or redistribute NSW totals into LGA/postcode results.
+
+## Tests
+
+```bash
+python -m pytest -q
+```
+
+Fixtures use tiny invented values in tests only; no synthetic values are used for application reporting.
+
+## Next milestones
+
+1. Run the real-file acceptance test in your local checkout and confirm the dashboard/map render.
+2. Verify boundary-name matching and any geo-source revisions.
+3. Obtain a suitable AOD source and implement its dedicated adapter.
+4. Add official population denominators and only appropriately attributable funding data.
+5. Review commercial redistribution rights before putting raw or cleaned government observations in this public repository.
+
+See `docs/PRODUCT_REQUIREMENTS.md` and `docs/SOURCE_ACQUISITION.md`. Draft PR #1 remains separate from `main`.
