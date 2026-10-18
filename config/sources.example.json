@@ -1,23 +1,22 @@
 {
   "sources": [
     {
-      "enabled": false,
-      "id": "mental_health_ed_monthly_count",
-      "indicator": "Mental-health-related ED presentations — monthly count",
-      "file": "data/raw/healthstats_mental_health_monthly.csv",
+      "enabled": true,
+      "adapter": "healthstats_lhd_quarterly",
+      "id": "healthstats_mh_ed_quarterly_crude_rate",
+      "indicator": "Mental-health-related ED presentations — quarterly crude rate",
+      "file": "data/raw/NSW_HealthStats_LHD.csv",
       "agency": "NSW Ministry of Health / HealthStats NSW",
-      "source_url": "https://www.healthstats.nsw.gov.au/indicator?name=-men-sui-mth-ed&location=LHD",
+      "source_url": "https://www.healthstats.nsw.gov.au/r/135943",
       "geography_type": "LHD",
-      "frequency": "monthly",
-      "unit": "presentations",
-      "value_kind": "count",
-      "columns": {
-        "geography": "SET_ACTUAL_GEOGRAPHY_COLUMN",
-        "period": "SET_ACTUAL_MONTH_COLUMN",
-        "value": "SET_ACTUAL_COUNT_COLUMN"
-      },
-      "filters": {},
-      "retrieved_at": "RECORD_DOWNLOAD_DATE",
+      "frequency": "quarterly",
+      "unit": "presentations per 100,000 population",
+      "value_kind": "rate",
+      "age_band": "Total: 12 years and over",
+      "sex": "Persons",
+      "presentation_type": "Total mental health presentations",
+      "retrieved_at": "2026-10-18",
+      "source_release": "June 2026",
       "license_reviewed": false
     }
   ]
