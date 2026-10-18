@@ -1,39 +1,30 @@
-# GeoHealth source acquisition
+# HealthStats NSW source register
 
-Use **source-published observations** with documented geography, units and strata. A CSV download button does not guarantee a stable public CSV URL.
+## Verified initial attachment
 
-## NSW HealthStats: first forecast target
-Mental-health-related emergency department visits, monthly (LHD comparison):
-https://www.healthstats.nsw.gov.au/indicator?name=-men-sui-mth-ed&location=LHD
+- Export: `NSW HealthStats LHD.csv` (copy unchanged to `data/raw/NSW_HealthStats_LHD.csv`).
+- Citation: https://www.healthstats.nsw.gov.au/r/135943
+- HealthStats indicator: “Mental health related emergency department visits (monthly)” **but LHD and PHN results are quarterly** per exported notes.
+- Source release updated June 2026; exported/downloaded 18 October 2026.
+- SHA-256 of supplied attachment: `080e5904833c120dedd8309383fac8e8e6444c8f8e2b67cda918ae640b40055d`.
+- Observations: 588 for 14 LHD labels (13 individual plus published All LHDs), 42 quarters each (2015-Q4–2026-Q1).
+- Measure: crude rate per 100,000, with source-supplied 95% CIs.
+- LHD based on patient residence; Far West and Western NSW suppressed; All LHDs includes missing/not stated.
+- Coding source changed from HIE to EDWARD beginning FY2021–22; source excludes Albury ED presentations.
 
-Open the source dashboard, choose the *number* of presentations, intended LHD comparison, persons, all ages, total mental-health presentation category, then **Download data as CSV**. Preserve the original download. Inspect column names with `python -m etl.build --inspect ...`. Do not assume the export has YYYY-MM dates or numeric columns until checked.
+## Reproducibility
 
-## Official LHD boundaries
-ArcGIS official layer:
-https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/SAPHARI_Version_LHD_Areas_2/FeatureServer/0
+1. Preserve unchanged source as `data/raw/NSW_HealthStats_LHD.csv`.
+2. Run `python -m etl.build`.
+3. Inspect `data/processed/observations.csv` and `provenance.json`.
+4. Government original files and transformed records are excluded from Git. Reuse/licensing review is **not complete**.
+5. Optionally `python -m etl.download --boundaries` to download real LHD geometry from https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/SAPHARI_Version_LHD_Areas_2/FeatureServer/0.
 
-GeoHealth `python -m etl.download --boundaries` requests real GeoJSON at EPSG:4326 with `lhd_name` and `lhd_code`. It preserves retrieval URL, date and file SHA-256.
+## Other potential sources
 
-## Other sources for subsequent milestones
+- [Bureau of Health Information](https://www.bhi.nsw.gov.au/downloadable-data) — quarterly hospital/ED activity.
+- [ABS regional population](https://www.abs.gov.au/statistics/people/population/regional-population/latest-release).
+- [AIHW AODTS PHN data](https://www.aihw.gov.au/reports/alcohol-other-drug-treatment-services/alcohol-other-drug-treatment-services-australia/contents/data-primary-health-network).
+- [PHN concordances](https://www.health.gov.au/resources/collections/primary-health-networks-phns-collection-of-concordance-files).
 
-Bureau of Health Information downloadable quarterly activity:
-https://www.bhi.nsw.gov.au/downloadable-data
-
-ABS regional population:
-https://www.abs.gov.au/statistics/people/population/regional-population/latest-release
-
-ABS SEIFA:
-https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/latest-release
-
-AIHW AOD treatment services by PHN:
-https://www.aihw.gov.au/reports/alcohol-other-drug-treatment-services/alcohol-other-drug-treatment-services-australia/contents/data-primary-health-network
-
-Government PHN concordances:
-https://www.health.gov.au/resources/collections/primary-health-networks-phns-collection-of-concordance-files
-
-## Rules
-- Verify source geography, frequency and observed vs modelled status before loading.
-- Count of *presentations* does not equal count of persons or prevalence.
-- Funding at statewide level is **not** an observed LHD allocation.
-- Suppressed small cells and missing values are **not zero**.
-- Verify copyright, licence and commercial redistribution rights before selling or embedding data.
+Never conflate service presentations with distinct people, illness incidence or service access, and never redistribute aggregate funds without a defensible recorded allocation method.
