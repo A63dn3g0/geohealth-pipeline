@@ -28,7 +28,7 @@ def csv_fixture(tmp_path: Path):
     for district in ["Sydney LHD","All LHDs"]:
         for period,value in [("2025-Q1",200),("2025-Q2",220),("2025-Q3",240)]:
             lines.append(f'"Total: 12 years and over","Total mental health presentations","Persons","{district}","{period}",{value},{value-10},{value+10}')
-    lines.extend(['"','"Data at LHD and PHN levels are reported by quarters."'])
+    lines.extend(['', '"Data at LHD and PHN levels are reported by quarters."'])
     path.write_text("\n".join(lines)+"\n", encoding="utf-8")
     return path
 
