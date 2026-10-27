@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from analysis.forecast import ForecastUnavailable, forecast_monthly_counts, forecast_quarterly_rate
 from analysis.geography import join_key
+from etl.audit_geography import audit_lhd_geojson, GeographyAuditError
 
 ROOT = Path(__file__).resolve().parent
 OBSERVATIONS = ROOT / "data/processed/observations.csv"
@@ -35,6 +36,11 @@ def draw_map(latest: pd.DataFrame, boundaries: dict | None) -> None:
         return
     if not latest.geography_type.eq("LHD").all():
         st.info("Map currently supports LHD source observations; no PHN/LGA allocation is inferred.")
+        return
+    try:
+        audit_lhd_geojson(boundaries)
+    except GeographyAuditError as error:
+        st.error(f"Map withheld: official boundary integrity check failed: {error}")
         return
     geo = json.loads(json.dumps(boundaries))
     for feature in geo["features"]:
