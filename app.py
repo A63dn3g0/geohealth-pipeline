@@ -68,6 +68,7 @@ def main() -> None:
     st.set_page_config(page_title="GeoHealth NSW", layout="wide")
     st.title("GeoHealth NSW")
     st.caption("Public-source utilisation dashboard · observed service activity is not illness prevalence")
+    st.warning("Data-use restriction: HealthStats NSW prohibits commercial use or resale of its downloadable data. This dashboard is for internal research/testing only until written permission or a suitable licence is obtained. See docs/DATA_LICENSING.md.")
     data = load_observations()
     if data.empty:
         st.warning("No verified government observations loaded. GeoHealth does not invent analytical data.")
