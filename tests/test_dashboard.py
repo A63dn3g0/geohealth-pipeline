@@ -39,7 +39,7 @@ def test_quarterly_lhd_dashboard_with_temporary_fixture():
         app = AppTest.from_file(root / "app.py", default_timeout=25).run()
         assert not app.exception
         assert len(app.tabs) == 5
-        assert not app.warning
+        assert len(app.warning) == 1  # Explicit commercial licensing restriction
     finally:
         target.unlink(missing_ok=True)
         st.cache_data.clear()
