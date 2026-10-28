@@ -137,3 +137,64 @@ def forecast_quarterly_rate(data: pd.DataFrame, horizon: int = 4) -> tuple[pd.Da
         "benchmark_mae":scores["seasonal_naive"],
         "outperforms_seasonal_naive":scores[winner] < scores["seasonal_naive"],
     }
+
+
+def forecast_annual_rate(data: pd.DataFrame, horizon: int = 1) -> tuple[pd.DataFrame, dict]:
+    """Conservative annual FINANCIAL-YEAR age-standardised rate forecast.
+
+    Compare one-year naive vs trailing-five-year mean with rolling-origin
+    single-step validation over the most recent six held-out years.
+    These are descriptive statistical extrapolations, not causal predictions.
+    Empirical error bands are NOT calibrated prediction intervals.
+    """
+    if horizon not in (1, 2, 3):
+        raise ValueError("Annual forecast horizon must be 1, 2 or 3 financial years")
+    needed = {"period", "value", "frequency", "value_kind", "data_status"}
+    if needed - set(data):
+        raise ForecastUnavailable("Missing required annual forecasting columns")
+    if not (data.frequency.eq("annual").all() and
+            data.value_kind.eq("rate").all() and
+            data.data_status.eq("observed").all()):
+        raise ForecastUnavailable("Only directly observed annual rate series qualify")
+    if "geography_name" in data and data.geography_name.nunique() != 1:
+        raise ForecastUnavailable("Forecast each Local Health District separately")
+    history = data.copy()
+    history["period"] = pd.to_datetime(history.period)
+    history = history.sort_values("period").reset_index(drop=True)
+    if len(history) < 18:
+        raise ForecastUnavailable("At least 18 consecutive financial-year observations required")
+    if history.period.duplicated().any():
+        raise ForecastUnavailable("Duplicate financial-year periods")
+    expected = pd.Series(pd.date_range(history.period.iloc[0], history.period.iloc[-1], freq="YS-JUL"))
+    if not history.period.equals(expected):
+        raise ForecastUnavailable("Missing or non-July annual periods; forecast withheld")
+    y = pd.to_numeric(history.value, errors="coerce").to_numpy(dtype=float)
+    if not np.isfinite(y).all() or (y < 0).any():
+        raise ForecastUnavailable("Missing/invalid AOD rates; forecast withheld")
+    candidates = {
+        "last_year_naive": lambda past: float(past[-1]),
+        "trailing_five_year_mean": lambda past: float(past[-5:].mean()),
+    }
+    errors = {name: [] for name in candidates}
+    for origin in range(len(y) - 6, len(y)):
+        for name, candidate in candidates.items():
+            errors[name].append(float(y[origin] - candidate(y[:origin])))
+    mae = {name: float(np.mean(np.abs(res))) for name, res in errors.items()}
+    winner = min(mae, key=mae.get)
+    point = max(0.0, candidates[winner](y))
+    pred = np.repeat(point, horizon)
+    absolute = np.abs(errors[winner])
+    q80, q95 = np.quantile(absolute, [0.8, 0.95])
+    dates = pd.date_range(history.period.iloc[-1] + pd.offsets.YearBegin(month=7),
+                          periods=horizon, freq="YS-JUL")
+    frame = pd.DataFrame({
+        "period": dates, "predicted": pred,
+        "lower_80": np.maximum(0, pred-q80), "upper_80": pred+q80,
+        "lower_95": np.maximum(0, pred-q95), "upper_95": pred+q95,
+    })
+    return frame, {
+        "model": winner, "backtest_mae": mae,
+        "n_years": len(y), "benchmark_mae": mae["last_year_naive"],
+        "interval_method": "Uncalibrated absolute-error bands from six annual 1-step backtests",
+        "forecast_target": "Age-standardised AOD-related hospitalisation rate per 100,000, financial year",
+    }
