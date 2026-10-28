@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from analysis.forecast import ForecastUnavailable, forecast_monthly_counts, forecast_quarterly_rate
+from analysis.forecast import ForecastUnavailable, forecast_monthly_counts, forecast_quarterly_rate, forecast_annual_rate
 from analysis.geography import join_key
 from etl.audit_geography import audit_lhd_geojson, GeographyAuditError
 
@@ -147,9 +147,8 @@ def main() -> None:
         figure.add_trace(go.Scatter(x=area_data.period, y=area_data.value,
             name="Observed", mode="lines+markers"))
         try:
-            if annual:
-                raise ForecastUnavailable("Annual AOD rate forecasting deferred until an independently evaluated financial-year model is approved; the 23-year historical series is displayed in full.")
-            forecast, metadata = (forecast_quarterly_rate(area_data, horizon=horizon) if quarterly
+            forecast, metadata = (forecast_annual_rate(area_data, horizon=horizon) if annual
+                                  else forecast_quarterly_rate(area_data, horizon=horizon) if quarterly
                                   else forecast_monthly_counts(area_data, horizon=horizon))
             figure.add_trace(go.Scatter(x=forecast.period, y=forecast.upper_95,
                 line=dict(width=0), showlegend=False, mode="lines"))
@@ -160,6 +159,8 @@ def main() -> None:
                 mode="lines+markers", line=dict(dash="dash"), name="Forecast"))
             st.caption(f"Selected model: {metadata['model']}; rolling-origin MAE: {metadata['backtest_mae']}. {metadata['interval_method']}.")
             st.caption("Forecast error bands are exploratory and not statistically calibrated. Forecasts describe service utilisation, not underlying illness prevalence.")
+            if annual:
+                st.warning("AOD projections use an old financial-year series (latest FY2023–24). Interpret near-term projections cautiously: changes in practice, coding or public policy can invalidate naive extrapolation.")
             st.dataframe(forecast, hide_index=True)
         except ForecastUnavailable as error:
             st.info("Forecast withheld: " + str(error))
