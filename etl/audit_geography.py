@@ -58,9 +58,9 @@ def audit_lhd_geojson(doc: dict) -> dict:
         points = list(_positions(coords))
         if len(points) < 4:
             raise GeographyAuditError("Missing polygon vertices for " + label)
-        if any(not (140 <= lng <= 155 and -39 <= lat <= -27)
+        if any(not (140 <= lng <= 170 and -41 <= lat <= -25)
                for lng, lat in points):
-            raise GeographyAuditError("Geometry outside NSW geographic envelope for " + label)
+            raise GeographyAuditError("Geometry outside NSW territory/islands sanity envelope for " + label)
         observed[key] = {"name": label, "code": code}
     expected = {join_key(name): name for name in EXPECTED_LHDS}
     missing = [name for key, name in expected.items() if key not in observed]
