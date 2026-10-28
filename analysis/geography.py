@@ -1,5 +1,7 @@
-"""Normalize labels for matching; never infer geographic allocations."""
+"""Normalise official NSW LHD labels without changing geographic attribution."""
 import re
 
 def join_key(name: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", re.sub(r"\bLHD\b", "", str(name), flags=re.I).lower())
+    value = str(name).strip().lower()
+    value = re.sub(r"\b(local health district|lhd)\b", "", value, flags=re.I)
+    return re.sub(r"[^a-z0-9]", "", value)
