@@ -18,6 +18,23 @@
       "retrieved_at": "2026-10-18",
       "source_release": "June 2026",
       "license_reviewed": false
+    },
+    {
+      "enabled": true,
+      "adapter": "healthstats_aod_lhd_annual",
+      "id": "healthstats_aod_hospitalisation_annual_asr",
+      "indicator": "Alcohol and other drug-related hospitalisations — annual age-standardised rate",
+      "file": "data/raw/Alcohol and other drug hospitalisations_LHD.csv",
+      "agency": "NSW Ministry of Health / HealthStats NSW",
+      "source_url": "https://www.healthstats.nsw.gov.au/r/137803",
+      "geography_type": "LHD",
+      "frequency": "annual",
+      "unit": "age-standardised hospitalisations per 100,000 population",
+      "value_kind": "rate",
+      "diagnosis_category": "Total alcohol and other drug-related",
+      "rate_method": "age_standardised",
+      "retrieved_at": "2026-10-19",
+      "license_reviewed": false
     }
   ]
 }
