@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
 from etl.healthstats import parse_healthstats_lhd, footer_metadata
+from etl.aod import parse_aod_lhd_annual, aod_footer_metadata
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = ("id", "file", "agency", "source_url", "geography_type", "frequency", "indicator", "unit", "value_kind", "columns")
@@ -36,7 +37,7 @@ def period_start(values: pd.Series, frequency: str) -> pd.Series:
     return pd.Series(dates, index=values.index).dt.strftime("%Y-%m-%d")
 
 def normalize_csv(source: dict, root: Path = ROOT) -> pd.DataFrame:
-    required = tuple(k for k in REQUIRED if k != "columns") if source.get("adapter")=="healthstats_lhd_quarterly" else REQUIRED
+    required = tuple(k for k in REQUIRED if k != "columns") if source.get("adapter") in {"healthstats_lhd_quarterly", "healthstats_aod_lhd_annual"} else REQUIRED
     missing = [k for k in required if k not in source]
     if missing:
         raise ValueError(f"Source manifest missing fields: {missing}")
@@ -49,6 +50,8 @@ def normalize_csv(source: dict, root: Path = ROOT) -> pd.DataFrame:
         raise FileNotFoundError(f"Download {source['source_url']} and save at {path}")
     if source.get("adapter") == "healthstats_lhd_quarterly":
         return parse_healthstats_lhd(path, source)
+    if source.get("adapter") == "healthstats_aod_lhd_annual":
+        return parse_aod_lhd_annual(path, source)
     mapping = source["columns"]
     if not {"period", "geography", "value"} <= set(mapping):
         raise ValueError("columns must map period, geography and value")
@@ -103,7 +106,8 @@ def build(root: Path = ROOT, manifest: str = "config/sources.json") -> pd.DataFr
     provenance = []
     for s in enabled:
         file = root / s["file"]
-        metadata = footer_metadata(file) if s.get("adapter")=="healthstats_lhd_quarterly" else {}
+        metadata = (footer_metadata(file) if s.get("adapter")=="healthstats_lhd_quarterly"
+                    else aod_footer_metadata(file) if s.get("adapter")=="healthstats_aod_lhd_annual" else {})
         provenance.append({k: s[k] for k in ["id", "agency", "source_url", "indicator", "unit", "frequency", "value_kind"]} | {
             "source_file": s["file"], "sha256": hashlib.sha256(file.read_bytes()).hexdigest(),
             "retrieved_at": s.get("retrieved_at", "not recorded"), "license_reviewed": s.get("license_reviewed", False),
