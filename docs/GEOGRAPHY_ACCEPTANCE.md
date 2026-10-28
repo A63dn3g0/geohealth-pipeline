@@ -1,3 +1,14 @@
+## Live verification update — 28 October 2026
+
+GitHub Actions successfully contacted the real Data.NSW ArcGIS service, downloaded official LHD GeoJSON, and passed the 15-jurisdiction polygon-name/code/geography audit. The first diagnostic found two flawed assumptions: full official labels ('South Eastern Sydney Local Health District') needed to match abbreviated HealthStats '... LHD' labels, and the NSW boundary extent includes offshore island territory beyond a mainland-only longitude envelope. Both have been corrected, and the latest live-geography-audit job passed.
+
+**Verified:** real layer download, GeoJSON polygon structure, reported LHD coverage, official code/name fields, and automated map join key matching.
+
+**Not yet verified:** actual map rendering in a human browser, geodesic topology/area validation, and commercial redistribution rights to the boundary layer.
+
+See the latest successful GitHub Actions run: https://github.com/A63dn3g0/geohealth-pipeline/actions/runs/40680930035
+
+---
 # NSW LHD geographic QA
 
 ### What the current audit checks
