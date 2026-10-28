@@ -84,19 +84,28 @@ def main() -> None:
     first, last = selected.period.min(), selected.period.max()
     if selected.frequency.iloc[0] == "quarterly":
         span = f"{first.year}-Q{first.quarter} to {last.year}-Q{last.quarter}"
+    elif selected.frequency.iloc[0] == "annual":
+        span = f"FY{first.year}–{str(first.year+1)[-2:]} to FY{last.year}–{str(last.year+1)[-2:]}"
     else:
         span = f"{first:%b %Y} to {last:%b %Y}"
     st.caption(f"{geography} · {indicator} · {span} · {selected.unit.iloc[0]} ({selected.value_kind.iloc[0]})")
     if selected.value_kind.iloc[0] == "rate":
-        st.info("These are source-published crude rates per 100,000, NOT presentation counts or mental illness prevalence. Crude rates are not adjusted for age differences.")
+        if selected.frequency.iloc[0] == "annual":
+            st.info("AOD: annual financial-year **age-standardised hospitalisation rates** per 100,000; not presentation counts, distinct people or prevalence. These rates are adjusted to the Australian 2001 reference population.")
+        else:
+            st.info("Mental-health ED: quarterly **crude** rates per 100,000, not presentation counts or illness prevalence. Crude rates are NOT age-adjusted.")
     if "All LHDs" in selected.geography_name.values:
         st.caption("The published All LHDs aggregate includes suppressed districts and records without an LHD; it is a benchmark, not an average of the displayed districts.")
-    if geography == "LHD":
-        st.caption("Far West and Western NSW LHDs are suppressed in this export. Values are not imputed.")
+    if geography == "LHD" and selected.indicator_id.iloc[0] == "healthstats_mh_ed_quarterly_crude_rate":
+        st.caption("Mental-health ED source suppresses Far West and Western NSW; no values are imputed.")
+    if selected.frequency.iloc[0] == "annual":
+        st.caption("AOD observations use **financial years (July–June)**, not calendar years. Hospitalisation and ED-presentations measures must not be added or directly equated.")
     tabs = st.tabs(["Overview", "Map", "Jurisdiction", "Trends & forecast", "Funding & resources"])
     with tabs[0]:
         latest = selected[(selected.period == last) & (selected.geography_name != "All LHDs")]
         st.metric("Published individual jurisdictions at latest period", len(latest))
+        if latest.empty:
+            st.warning("No reported local observations for the latest period.")
         st.caption("Values are not summed automatically: indicators can be rates, counts or incomplete coverage.")
         st.plotly_chart(px.bar(latest.sort_values("value", ascending=False),
             x="geography_name", y="value", title=f"Latest period: {last:%b %Y}"),
@@ -121,8 +130,11 @@ def main() -> None:
         st.dataframe(area_data[fields], hide_index=True)
     with tabs[3]:
         quarterly = (area_data.frequency.eq("quarterly").all() and area_data.value_kind.eq("rate").all())
+        annual = (area_data.frequency.eq("annual").all() and area_data.value_kind.eq("rate").all())
         if quarterly:
             horizon = st.select_slider("Forecast horizon (quarters)", options=[1, 2, 4, 8], value=4)
+        elif annual:
+            horizon = st.select_slider("Forecast horizon (financial years)", options=[1, 2, 3], value=1)
         else:
             horizon = st.select_slider("Forecast horizon (months)", options=[3, 6, 12], value=12)
         figure = go.Figure()
@@ -135,6 +147,8 @@ def main() -> None:
         figure.add_trace(go.Scatter(x=area_data.period, y=area_data.value,
             name="Observed", mode="lines+markers"))
         try:
+            if annual:
+                raise ForecastUnavailable("Annual AOD rate forecasting deferred until an independently evaluated financial-year model is approved; the 23-year historical series is displayed in full.")
             forecast, metadata = (forecast_quarterly_rate(area_data, horizon=horizon) if quarterly
                                   else forecast_monthly_counts(area_data, horizon=horizon))
             figure.add_trace(go.Scatter(x=forecast.period, y=forecast.upper_95,
@@ -145,7 +159,7 @@ def main() -> None:
             figure.add_trace(go.Scatter(x=forecast.period, y=forecast.predicted,
                 mode="lines+markers", line=dict(dash="dash"), name="Forecast"))
             st.caption(f"Selected model: {metadata['model']}; rolling-origin MAE: {metadata['backtest_mae']}. {metadata['interval_method']}.")
-            st.caption("Forecast error bands are exploratory and not statistically calibrated. Forecasts concern utilisation rates, not underlying mental-health prevalence.")
+            st.caption("Forecast error bands are exploratory and not statistically calibrated. Forecasts describe service utilisation, not underlying illness prevalence.")
             st.dataframe(forecast, hide_index=True)
         except ForecastUnavailable as error:
             st.info("Forecast withheld: " + str(error))
