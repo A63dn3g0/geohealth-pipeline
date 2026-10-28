@@ -64,3 +64,34 @@ def test_year_parser_rejects_nonconsecutive():
     assert _financial_year_start("23/24")=="2023-07-01"
     with pytest.raises(ValueError,match="Nonconsecutive"):
         _financial_year_start("23/25")
+
+
+def annual_series(n=23):
+    import numpy as np
+    from analysis.forecast import forecast_annual_rate
+    return pd.DataFrame({
+        "geography_name": "Sydney LHD",
+        "period": pd.date_range("2001-07-01", periods=n, freq="YS-JUL"),
+        "value": np.array([1000 + i*4.0 + (i%3)*9 for i in range(n)]),
+        "frequency": "annual", "value_kind": "rate", "data_status": "observed",
+    })
+
+def test_annual_aod_forecast():
+    from analysis.forecast import forecast_annual_rate
+    result, metadata = forecast_annual_rate(annual_series(), horizon=3)
+    assert len(result)==3
+    assert result.period.iloc[0]==pd.Timestamp("2024-07-01")
+    assert metadata["n_years"]==23
+    assert metadata["model"] in ("last_year_naive","trailing_five_year_mean")
+    assert (result.lower_95 <= result.predicted).all()
+
+def test_annual_missing_year_refused():
+    from analysis.forecast import forecast_annual_rate, ForecastUnavailable
+    with pytest.raises(ForecastUnavailable,match="Missing or non-July"):
+        forecast_annual_rate(annual_series().drop(index=10))
+
+def test_annual_wrong_units_refused():
+    from analysis.forecast import forecast_annual_rate, ForecastUnavailable
+    data=annual_series();data["value_kind"]="count"
+    with pytest.raises(ForecastUnavailable,match="annual rate"):
+        forecast_annual_rate(data)
