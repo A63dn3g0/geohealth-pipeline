@@ -35,6 +35,21 @@
       "rate_method": "age_standardised",
       "retrieved_at": "2026-10-19",
       "license_reviewed": false
+    },
+    {
+      "enabled": true,
+      "adapter": "abs_seifa_lga_2021",
+      "id": "abs_seifa_2021_lga",
+      "indicator": "ABS SEIFA 2021 LGA indices",
+      "file": "data/raw/geohealth_abs_nsw_lga_seifa_2021.csv",
+      "agency": "Australian Bureau of Statistics",
+      "source_url": "https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/2021",
+      "geography_type": "LGA",
+      "frequency": "census",
+      "unit": "index",
+      "value_kind": "index",
+      "reference_year": 2021,
+      "license_reviewed": false
     }
   ]
 }
