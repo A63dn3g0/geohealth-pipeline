@@ -98,6 +98,8 @@ def main() -> None:
         st.caption("The published All LHDs aggregate includes suppressed districts and records without an LHD; it is a benchmark, not an average of the displayed districts.")
     if geography == "LHD" and selected.indicator_id.iloc[0] == "healthstats_mh_ed_quarterly_crude_rate":
         st.caption("Mental-health ED source suppresses Far West and Western NSW; no values are imputed.")
+    if selected.frequency.iloc[0] == "census":
+        st.caption("SEIFA is reported at **2021 LGA geography**, not LHD. Lower IRSD score/decile signifies relatively greater disadvantage. Rankings are ordinal and must not be averaged across areas.")
     if selected.frequency.iloc[0] == "annual":
         st.caption("AOD observations use **financial years (July–June)**, not calendar years. Hospitalisation and ED-presentations measures must not be added or directly equated.")
     tabs = st.tabs(["Overview", "Map", "Jurisdiction", "Trends & forecast", "Funding & resources"])
@@ -112,7 +114,10 @@ def main() -> None:
             use_container_width=True)
     with tabs[1]:
         latest = selected[selected.period == last]
-        draw_map(latest, load_geojson())
+        if geography == "LGA":
+            st.info("LGA SEIFA values are available for comparison and ranking; an official 2021 LGA polygon layer is not yet loaded. LHD geometry cannot be used to display LGA scores.")
+        else:
+            draw_map(latest, load_geojson())
     area_data = selected[selected.geography_name == area].sort_values("period")
     with tabs[2]:
         st.subheader(area)
@@ -129,9 +134,13 @@ def main() -> None:
             st.caption("Lower/upper 95% CI columns describe *observed* rates, not forecasts.")
         st.dataframe(area_data[fields], hide_index=True)
     with tabs[3]:
+        census = area_data.frequency.eq("census").all()
         quarterly = (area_data.frequency.eq("quarterly").all() and area_data.value_kind.eq("rate").all())
         annual = (area_data.frequency.eq("annual").all() and area_data.value_kind.eq("rate").all())
-        if quarterly:
+        if census:
+            horizon = 0
+            st.info("No forecast for cross-sectional 2021 Census SEIFA indexes or deciles.")
+        elif quarterly:
             horizon = st.select_slider("Forecast horizon (quarters)", options=[1, 2, 4, 8], value=4)
         elif annual:
             horizon = st.select_slider("Forecast horizon (financial years)", options=[1, 2, 3], value=1)
@@ -147,6 +156,8 @@ def main() -> None:
         figure.add_trace(go.Scatter(x=area_data.period, y=area_data.value,
             name="Observed", mode="lines+markers"))
         try:
+            if census:
+                raise ForecastUnavailable("SEIFA Census indexes are cross-sectional socioeconomic measures, not a time series.")
             forecast, metadata = (forecast_annual_rate(area_data, horizon=horizon) if annual
                                   else forecast_quarterly_rate(area_data, horizon=horizon) if quarterly
                                   else forecast_monthly_counts(area_data, horizon=horizon))
