@@ -58,6 +58,12 @@ python -m pytest -q
 
 Fixtures use tiny invented values in tests only; no synthetic values are used for application reporting.
 
+## ABS SEIFA 2021 socioeconomic layer (LGA, not LHD)
+
+The official ABS SEIFA 2021 LGA workbook can now be loaded as a **separate 2021 LGA geography** using the provided NSW-only CSV extraction. Copy `geohealth_abs_nsw_lga_seifa_2021.csv` into `data/raw/`; it is enabled in `config/sources.json`. The source includes **128 named NSW LGAs** and four ABS socioeconomic indexes (IRSD, IRSAD, IER, IEO), plus 2021 Census usual-resident population and published ranking/decile fields. No raw Census data is committed to the public repo.
+
+This does NOT create LHD-specific SEIFA scores or a direct LGA-to-LHD overlay; an official 2021 SA1-to-LHD correspondence and appropriately weighted SA1 socioeconomic measures are still necessary for defensible LHD-level socioeconomic comparisons. The dashboard intentionally does not map these LGA values using LHD polygons or forecast one-time Census indexes. See `docs/ABS_SEIFA_LGA_2021.md`.
+
 ## Map verification status
 
 The official ArcGIS layer metadata was independently checked: it exposes `lhd_name` and `lhd_code`, uses polygon geometry, and advertises GeoJSON query support. The live polygon download and geographic join/visual rendering are **not yet certified**; this environment cannot retrieve the service's live geometry. The app's audit refuses missing polygons and invalid joins. Download polygons locally with `python -m etl.download --boundaries` and check `docs/GEOGRAPHY_ACCEPTANCE.md`. The boundary dataset's licence also needs a separate review.
