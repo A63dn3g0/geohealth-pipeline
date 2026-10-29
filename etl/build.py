@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 from etl.healthstats import parse_healthstats_lhd, footer_metadata
 from etl.aod import parse_aod_lhd_annual, aod_footer_metadata
+from etl.abs_seifa import parse_abs_lga_seifa
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = ("id", "file", "agency", "source_url", "geography_type", "frequency", "indicator", "unit", "value_kind", "columns")
@@ -37,11 +38,11 @@ def period_start(values: pd.Series, frequency: str) -> pd.Series:
     return pd.Series(dates, index=values.index).dt.strftime("%Y-%m-%d")
 
 def normalize_csv(source: dict, root: Path = ROOT) -> pd.DataFrame:
-    required = tuple(k for k in REQUIRED if k != "columns") if source.get("adapter") in {"healthstats_lhd_quarterly", "healthstats_aod_lhd_annual"} else REQUIRED
+    required = tuple(k for k in REQUIRED if k != "columns") if source.get("adapter") in {"healthstats_lhd_quarterly", "healthstats_aod_lhd_annual", "abs_seifa_lga_2021"} else REQUIRED
     missing = [k for k in required if k not in source]
     if missing:
         raise ValueError(f"Source manifest missing fields: {missing}")
-    if source["frequency"] not in FREQ or source["value_kind"] not in KINDS or source["geography_type"] not in GEO:
+    if source["frequency"] not in (FREQ | {"census"}) or source["value_kind"] not in KINDS or source["geography_type"] not in GEO:
         raise ValueError(f"Invalid frequency, value kind or geography for {source['id']}")
     path = (root / source["file"]).resolve()
     if not path.is_relative_to(root.resolve()):
@@ -52,6 +53,8 @@ def normalize_csv(source: dict, root: Path = ROOT) -> pd.DataFrame:
         return parse_healthstats_lhd(path, source)
     if source.get("adapter") == "healthstats_aod_lhd_annual":
         return parse_aod_lhd_annual(path, source)
+    if source.get("adapter") == "abs_seifa_lga_2021":
+        return parse_abs_lga_seifa(path, source)
     mapping = source["columns"]
     if not {"period", "geography", "value"} <= set(mapping):
         raise ValueError("columns must map period, geography and value")
