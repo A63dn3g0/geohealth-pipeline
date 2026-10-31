@@ -1,0 +1,55 @@
+{
+  "sources": [
+    {
+      "enabled": true,
+      "adapter": "healthstats_lhd_quarterly",
+      "id": "healthstats_mh_ed_quarterly_crude_rate",
+      "indicator": "Mental-health-related ED presentations — quarterly crude rate",
+      "file": "data/raw/NSW_HealthStats_LHD.csv",
+      "agency": "NSW Ministry of Health / HealthStats NSW",
+      "source_url": "https://www.healthstats.nsw.gov.au/r/135943",
+      "geography_type": "LHD",
+      "frequency": "quarterly",
+      "unit": "presentations per 100,000 population",
+      "value_kind": "rate",
+      "age_band": "Total: 12 years and over",
+      "sex": "Persons",
+      "presentation_type": "Total mental health presentations",
+      "retrieved_at": "2026-10-18",
+      "source_release": "June 2026",
+      "license_reviewed": false
+    },
+    {
+      "enabled": true,
+      "adapter": "healthstats_aod_lhd_annual",
+      "id": "healthstats_aod_hospitalisation_annual_asr",
+      "indicator": "Alcohol and other drug-related hospitalisations — annual age-standardised rate",
+      "file": "data/raw/Alcohol and other drug hospitalisations_LHD.csv",
+      "agency": "NSW Ministry of Health / HealthStats NSW",
+      "source_url": "https://www.healthstats.nsw.gov.au/r/137803",
+      "geography_type": "LHD",
+      "frequency": "annual",
+      "unit": "age-standardised hospitalisations per 100,000 population",
+      "value_kind": "rate",
+      "diagnosis_category": "Total alcohol and other drug-related",
+      "rate_method": "age_standardised",
+      "retrieved_at": "2026-10-19",
+      "license_reviewed": false
+    },
+    {
+      "enabled": true,
+      "adapter": "abs_seifa_lga_2021",
+      "id": "abs_seifa_2021_lga",
+      "indicator": "ABS SEIFA 2021 LGA indices",
+      "file": "data/raw/geohealth_abs_nsw_lga_seifa_2021.csv",
+      "agency": "Australian Bureau of Statistics",
+      "source_url": "https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/2021",
+      "geography_type": "LGA",
+      "frequency": "census",
+      "unit": "index",
+      "value_kind": "index",
+      "reference_year": 2021,
+      "license_reviewed": false
+    }
+  ]
+}
