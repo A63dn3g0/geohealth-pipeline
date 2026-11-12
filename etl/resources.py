@@ -116,8 +116,13 @@ def build_resources(root: Path = ROOT) -> dict:
     names = {join_key(name) for name in EXPECTED_LHDS}
     if {join_key(name) for name in pop.lhd_short_name} != names:
         raise ResourceValidationError("Population labels do not match the 15 official LHDs")
+    official_name_by_id = dict(zip(pop.lhd_id, pop.lhd_short_name))
     for kind, frame in (("socioeconomic", ses), ("budgets", budgets), ("joined_reference", joined)):
         _geography(frame, kind, expected)
+        names_for_ids = frame[["lhd_id", "lhd_short_name"]].drop_duplicates()
+        if any(official_name_by_id[row.lhd_id] != row.lhd_short_name
+               for row in names_for_ids.itertuples(index=False)):
+            raise ResourceValidationError(f"{kind}: LHD label disagrees with population geography")
     if len(ses) != 15 or ses.lhd_id.duplicated().any() or not ses.census_year.eq("2021").all():
         raise ResourceValidationError("Socioeconomic records must be one 2021 row per LHD")
     if len(joined) != 15 or joined.lhd_id.duplicated().any():
@@ -191,9 +196,11 @@ def build_resources(root: Path = ROOT) -> dict:
 
     if len(grants) != 9:
         raise ResourceValidationError("Expected nine separate AOD hub grant awards")
-    _geography(grants, "grants", expected) if False else None  # grants legitimately cover seven LHDs
     if not set(grants.lhd_id) <= expected:
         raise ResourceValidationError("NGO grant points to unknown LHD")
+    if any(official_name_by_id[row.lhd_id] != row.lhd_short_name
+           for row in grants[["lhd_id", "lhd_short_name"]].drop_duplicates().itertuples(index=False)):
+        raise ResourceValidationError("NGO recipient location/LHD name mismatch")
     if (grants["annualised_amount_aud"] != "").any():
         raise ResourceValidationError("Do not annualise grant award without payment schedule")
     grants["awarded_amount_aud"] = _amount(grants.awarded_amount_aud, "grant awards")
