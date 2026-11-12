@@ -1,3 +1,24 @@
+## New: 15-LHD population, socioeconomic and resource layer
+
+The resource layer is built independently of the HealthStats MH/AOD and ABS SEIFA ingestion flows. Copy the six supplied NSW LHD research extract CSVs (population, socioeconomic, funding, NGO awards, joined-reference and source register) to `data/raw/`, using **original file content** and the exact filenames in [docs/RESOURCE_INTEGRATION.md](docs/RESOURCE_INTEGRATION.md).
+
+```bash
+python -m etl.resources
+streamlit run app.py
+```
+
+The resulting `data/processed/resources/` directory contains LHD profiles, scope-labelled initial budgets, separately attributable multi-year NGO grant awards, 15-district coverage/missingness summaries, source register and SHA-256 provenance. All five tables can be downloaded from the dashboard.
+
+**Do not misinterpret these extracts:**
+- Budgets are FY2025–26 **initial operating allocations**, not actual spending; 21/31 funding entries lack separately verified amounts.
+- Central Coast's purchased-service mental-health component is **partial**; Murrumbidgee's combined MH+AOD allocation is **unsplit**; grant award decisions are **multi-year recipient-location associations** and cannot be added to operating allocations.
+- Population denominators are **mixed or uncertain in reference year**. The MVP intentionally **does not generate funding-per-resident or funding-gap rankings** from them.
+- Only Central Coast has verified numeric LHD Census socioeconomic indicators; **no LHD IRSD** is currently sourced. The ABS 2021 LGA index requires an SA1-based crosswalk before being reported at LHD level.
+
+The new resource layer can be viewed independently if the three original health/SEIFA CSVs are not locally present; their absence must not be disguised by dummy data.
+
+---
+
 # GeoHealth NSW — real-data public-health dashboard MVP
 
 **NSW-first, source-backed, no PostgreSQL, no synthetic analytical data.**
