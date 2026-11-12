@@ -142,6 +142,10 @@ def main() -> None:
         st.warning("No verified government observations loaded. GeoHealth does not invent analytical data.")
         st.markdown("Place the unchanged quarterly **NSW HealthStats LHD.csv** export in `data/raw/NSW_HealthStats_LHD.csv`, then run `python -m etl.build` and refresh the dashboard. The source is already configured in `config/sources.json`. The export reports LHD **quarterly crude rates per 100,000**, not monthly counts, despite its title. See [HealthStats NSW](https://www.healthstats.nsw.gov.au/r/135943) for the source.")
         st.info("Optional map: python -m etl.download --boundaries")
+        resources = load_resources()
+        if resources:
+            st.info("The resource profiles are available independently of the outcome files.")
+            resource_dashboard(resources)
         return
     geography = st.sidebar.selectbox("Jurisdiction type", sorted(data.geography_type.unique()))
     subset = data[data.geography_type == geography]
