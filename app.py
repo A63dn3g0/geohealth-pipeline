@@ -14,6 +14,74 @@ ROOT = Path(__file__).resolve().parent
 OBSERVATIONS = ROOT / "data/processed/observations.csv"
 BOUNDARIES = ROOT / "data/raw/nsw_lhd_boundaries.geojson"
 
+
+RESOURCE_DIR = ROOT / "data/processed/resources"
+
+@st.cache_data(show_spinner=False)
+def load_resources() -> dict[str, pd.DataFrame]:
+    names = ("lhd_profiles", "funding_allocations", "ngo_grant_awards",
+             "lhd_resource_coverage", "source_register")
+    paths = {name: RESOURCE_DIR / (name + ".csv") for name in names}
+    if not all(path.is_file() for path in paths.values()):
+        return {}
+    return {name: pd.read_csv(path) for name, path in paths.items()}
+
+def resource_dashboard(tables: dict[str, pd.DataFrame]) -> None:
+    st.subheader("NSW LHD population and resources")
+    st.caption("15 district profiles; initial FY2025–26 operating allocations and separate "
+               "multi-year NGO awards. Missing data does not equal zero.")
+    profiles, funding, grants, coverage = (tables[k] for k in (
+        "lhd_profiles", "funding_allocations", "ngo_grant_awards", "lhd_resource_coverage"))
+    district = st.selectbox("Resource district", sorted(profiles.lhd_short_name.unique()),
+                            key="resource_lhd")
+    p = profiles.loc[profiles.lhd_short_name.eq(district)].iloc[0]
+    c = coverage.loc[coverage.lhd_id.eq(p.lhd_id)].iloc[0]
+    population_vintage = (
+        str(int(p.population_reference_year)) if pd.notna(p.population_reference_year)
+        else "exact reference year unverified"
+    )
+    st.metric("Reported district population", f"{int(p.population_estimate):,}")
+    st.caption(f"Population vintage: {population_vintage}; source: {p.source_url}")
+    metrics = [k for k in (
+        "aboriginal_and_torres_strait_islander_pct", "born_overseas_pct",
+        "speaks_language_other_than_english_pct", "age_70_plus_pct", "age_65_plus_pct",
+        "unemployment_pct", "households_with_children_low_income_pct",
+        "completed_year_12_or_equivalent_pct", "limited_spoken_english_pct",
+        "people_age_65_plus_living_alone_pct", "seifa_irsd_population_weighted_score",
+    ) if k in profiles.columns]
+    st.dataframe(pd.DataFrame({"indicator": metrics, "value": [p[k] for k in metrics]}),
+                 hide_index=True)
+    st.info(f"Socioeconomic coverage: {p.socioeconomic_completeness}. "
+            "LHD IRSD remains unknown until SA1 geography and population weighting are validated.")
+    st.markdown("**FY2025–26 initial operating allocations**")
+    selected = funding.loc[funding.lhd_id.eq(p.lhd_id)]
+    st.dataframe(selected[["funding_stream", "amount_aud", "allocation_class",
+                            "budget_scope", "quality", "source_url"]], hide_index=True)
+    st.caption("Full district service budgets, partial MH purchased-service components "
+               "and combined unsplit MH+AOD budgets have distinct scopes and must not be summed.")
+    st.markdown("**Multi-year NGO AOD hub grant awards**")
+    awards = grants.loc[grants.lhd_id.eq(p.lhd_id)]
+    if len(awards):
+        st.dataframe(awards[["recipient", "awarded_amount_aud", "program_term_years",
+                             "attribution_type", "source_url"]], hide_index=True)
+    else:
+        st.info("No recipient-locality AOD award in this extract; this is not evidence of zero funding.")
+    st.warning("Grant awards are multi-year recipient-location associations, not annual expenditure "
+               "or verified service catchment. They may overlap other allocations.")
+    st.markdown("**All-LHD resource coverage / missingness**")
+    st.dataframe(coverage, hide_index=True)
+    st.caption("No funding-per-resident or funding-gap ranking: district population reference years "
+               "are mixed or unknown, and operating budgets are not residence-attributed expenditure.")
+    for title, key in (("District profiles", "lhd_profiles"),
+                       ("Operating allocations", "funding_allocations"),
+                       ("NGO awards", "ngo_grant_awards"),
+                       ("Coverage", "lhd_resource_coverage"),
+                       ("Source register", "source_register")):
+        frame=tables[key]
+        st.download_button("Export " + title + " CSV", frame.to_csv(index=False).encode("utf-8"),
+                           file_name="geohealth_"+key+".csv", mime="text/csv",
+                           key="download_"+key)
+
 @st.cache_data(show_spinner=False)
 def load_observations() -> pd.DataFrame:
     if not OBSERVATIONS.is_file():
@@ -102,7 +170,11 @@ def main() -> None:
         st.caption("SEIFA is reported at **2021 LGA geography**, not LHD. Lower IRSD score/decile signifies relatively greater disadvantage. Rankings are ordinal and must not be averaged across areas.")
     if selected.frequency.iloc[0] == "annual":
         st.caption("AOD observations use **financial years (July–June)**, not calendar years. Hospitalisation and ED-presentations measures must not be added or directly equated.")
-    tabs = st.tabs(["Overview", "Map", "Jurisdiction", "Trends & forecast", "Funding & resources"])
+    resource_tables = load_resources()
+    tab_names = ["Overview", "Map", "Jurisdiction", "Trends & forecast", "Funding & resources"]
+    if resource_tables:
+        tab_names.append("Population & resources")
+    tabs = st.tabs(tab_names)
     with tabs[0]:
         latest = selected[(selected.period == last) & (selected.geography_name != "All LHDs")]
         st.metric("Published individual jurisdictions at latest period", len(latest))
@@ -183,6 +255,11 @@ def main() -> None:
         else:
             st.dataframe(funding.sort_values("period", ascending=False), hide_index=True)
             st.warning("Check original source and funding/allocation status before policy comparisons.")
+    if resource_tables:
+        with tabs[5]:
+            resource_dashboard(resource_tables)
+    else:
+        st.caption("LHD resource profiles not loaded; run python -m etl.resources with the six original source files.")
     with st.expander("Provenance and interpretation"):
         st.dataframe(selected[["indicator", "agency", "source_url", "unit", "frequency", "data_status"]].drop_duplicates(), hide_index=True)
         st.caption("Service access, capacity, coding and referral changes can alter utilisation independently of underlying population need.")
