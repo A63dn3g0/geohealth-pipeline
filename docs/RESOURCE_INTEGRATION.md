@@ -70,3 +70,16 @@ The ETL rejects unknown/mismatched districts, invalid budget scopes, missing gra
 Tests use *synthetic fixtures strictly within the test suite*. Source data are **not** committed to the public GitHub repository. Local source reuse and commercial redistribution rights must be verified independently; HealthStats commercial use restrictions remain a separate unresolved release gate.
 
 **Next acceptance:** Execute the complete pipeline using all six original user-supplied CSVs in the target environment, verify 15 LHD profiles, 31 budget rows, 9 awards and 12 source references, visually inspect the Streamlit dashboard and confirm full/partial/unsplit funding displays. This feature branch does not merge automatically.
+
+## Full real-data acceptance command
+
+Once all **nine** original local source CSVs are present (three existing health/SEIFA files plus the six resource extracts), run:
+
+```bash
+python -m etl.acceptance
+```
+
+This processes original MH (588), AOD (368), and ABS LGA SEIFA (2,176) observations and cross-checks all five resource tables. It verifies LHD names, rates and published confidence bounds, the number of funding records, NGO award totals, source provenance, and the absence of invented LHD IRSD or approved per-resident funding.
+
+A successful run writes `data/processed/real_data_acceptance.json` with `"result": "PASS"`. The report is **gitignored** and must be checked before accepting the actual source files. It is an ETL/data-contract gate, **not** a substitute for the Streamlit browser inspection or legal data licensing decision.
+
